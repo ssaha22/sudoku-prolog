@@ -52,6 +52,30 @@ blocks([[],[],[]|Rows], BlocksTail) :-
 blocks([[A,B,C|Bs], [D,E,F|Es], [G,H,I|Fs]|Rows], [[A,B,C,D,E,F,G,H,I]|BlocksTail]) :-
   blocks([Bs,Es,Fs|Rows], BlocksTail).
 
+solve(Board, UpdatedBoard) :-
+    replace_zeros_in_board(Board, UpdatedBoard),
+    flatten(UpdatedBoard, BoardList),
+    BoardList ins 1..9,
+    maplist(all_distinct, UpdatedBoard),
+    transpose(UpdatedBoard, TransposedBoard),
+    maplist(all_distinct, TransposedBoard),
+    blocks(UpdatedBoard, Blocks),
+    maplist(all_distinct, Blocks),
+    % Label the variables to find a solution
+    label(BoardList).
+
+solvable(Board) :-
+    % Find all possible solutions
+    findall(Board, solve(Board, _), Solutions),
+    length(Solutions, 1).
+
+replace_zeros_in_board(Board, Result) :-
+    once(maplist(replace_zeros_in_row, Board, Result)).
+
+replace_zeros_in_row([], []).
+replace_zeros_in_row([0|T], [_|T2]) :- replace_zeros_in_row(T, T2).
+replace_zeros_in_row([H|T], [H|T2]) :- H #\= 0, replace_zeros_in_row(T, T2).
+
 run_game((Board, Solution)) :-
   ( Board == Solution ->
     board_to_string(Board, BoardString),
