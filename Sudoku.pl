@@ -1,81 +1,94 @@
 :- use_module(library(clpfd)).
 
-% Predicate that checks if a number can be placed at a given position in a sudoku board
-is_valid_action(Board, Row, Col, Num) :-
-    between(0, 8, Row),
-    between(0, 8, Col),
-    between(1, 9, Num),
-    nth0(Row, Board, RowVals),
-    \+ member(Num, RowVals),
-    transpose(Board, Columns),
-    nth0(Col, Columns, ColVals),
-    \+ member(Num, ColVals),
-    RowBlock is Row // 3 * 3,
-    ColBlock is Col // 3 * 3,
-    block_index(RowBlock, ColBlock, BlockIndex),
-    blocks(Board, Blocks),
-    nth0(BlockIndex, Blocks, BlockVals),
-    \+ member(Num, BlockVals).
+% creates a base board with an easy mix
+baseBoardEasy([[1, 2, 3, 4, 5, 6, 7, 8, 9],
+               [4, 5, 6, 7, 8, 9, 1, 2, 3],
+               [7, 8, 9, 1, 2, 3, 4, 5, 6],
+               [2, 3, 4, 5, 6, 7, 8, 9, 1],
+               [5, 6, 7, 8, 9, 1, 2, 3, 4],
+               [8, 9, 1, 2, 3, 4, 5, 6, 7],
+               [3, 4, 5, 6, 7, 8, 9, 1, 2],
+               [6, 7, 8, 9, 1, 2, 3, 4, 5],
+               [9, 1, 2, 3, 4, 5, 6, 7, 8]]).
 
-perform_action(Board, Row, Col, Num, NewBoard) :-
-    nth0(Row, Board, OldRow),
-    replace_element_in_list(OldRow, Col, Num, NewRow),
-    replace_element_in_list(Board, Row, NewRow, NewBoard).
-    
-replace_element_in_list(List, Index, Element, Result) :-
-    nth0(Index, List, _, Temp),
-    nth0(Index, Result, Element, Temp).
+% creates a base board with a medium mix
+baseBoardMed([[5, 3, 4, 6, 7, 8, 9, 1, 2],
+              [6, 7, 2, 1, 9, 5, 3, 4, 8],
+              [1, 9, 8, 3, 4, 2, 5, 6, 7],
+              [8, 5, 9, 7, 6, 1, 4, 2, 3],
+              [4, 2, 6, 8, 5, 3, 7, 9, 1],
+              [7, 1, 3, 9, 2, 4, 8, 5, 6],
+              [9, 6, 1, 5, 3, 7, 2, 8, 4],
+              [2, 8, 7, 4, 1, 9, 6, 3, 5],
+              [3, 4, 5, 2, 8, 6, 1, 7, 9]]).
 
-apply_hint(Board, Solution, (NewBoard, ((Row, Col), Num))) :-
-    once(find_empty_position(Board, (Row, Col))),
-    nth0(Row, Solution, SolutionBoardRow),
-    nth0(Col, SolutionBoardRow, Num),
-    once(perform_action(Board, Row, Col, Num, NewBoard)).
+% creates a base board with a hard mix
+baseBoardHard([[9, 5, 4, 7, 1, 2, 6, 8, 3],
+               [1, 7, 3, 4, 8, 6, 9, 2, 5],
+               [2, 6, 8, 9, 5, 3, 4, 7, 1],
+               [3, 4, 1, 8, 7, 5, 2, 9, 6],
+               [8, 2, 7, 6, 9, 1, 3, 5, 4],
+               [5, 9, 6, 3, 2, 4, 8, 1, 7],
+               [6, 8, 5, 2, 3, 7, 1, 4, 9],
+               [4, 1, 9, 5, 6, 8, 7, 3, 2],
+               [7, 3, 2, 1, 4, 9, 5, 6, 8]]).
 
-find_empty_position(Board, (Row, Column)) :-
-    nth0(Row, Board, RowList),   % Get the RowList at the Row index
-    nth0(Column, RowList, 0).    % Check if the Column index in RowList is 0
+% example of a valid board
+exampleBoard([[0, 5, 8, 2, 4, 0, 9, 1, 0],
+              [0, 0, 0, 0, 9, 0, 6, 8, 7],
+              [0, 0, 0, 0, 6, 0, 2, 0, 0],
+              [8, 0, 5, 0, 0, 0, 4, 0, 0],
+              [0, 7, 0, 0, 5, 0, 1, 6, 2],
+              [1, 2, 0, 0, 0, 4, 0, 3, 0],
+              [0, 9, 6, 0, 8, 1, 3, 0, 5],
+              [0, 8, 1, 0, 0, 0, 0, 2, 0],
+              [7, 4, 3, 5, 0, 6, 0, 0, 0]]).
+  
+% exampleBoard almost fully filled in
+exampleBoardAlmostFilled([[0, 5, 8, 2, 4, 0, 9, 1, 3],
+                          [4, 3, 2, 1, 9, 5, 6, 8, 7],
+                          [9, 1, 7, 8, 6, 3, 2, 5, 4],
+                          [8, 6, 5, 3, 1, 2, 4, 7, 9],
+                          [3, 7, 4, 9, 5, 8, 1, 6, 2],
+                          [1, 2, 9, 6, 7, 4, 5, 3, 8],
+                          [2, 9, 6, 7, 8, 1, 3, 4, 5],
+                          [5, 8, 1, 4, 3, 9, 7, 2, 6],
+                          [7, 4, 3, 5, 2, 6, 8, 9, 1]]).
 
-block_index(0, 0, 0).
-block_index(0, 3, 1).
-block_index(0, 6, 2).
-block_index(3, 0, 3).
-block_index(3, 6, 4).
-block_index(3, 6, 5).
-block_index(6, 0, 6).
-block_index(6, 3, 7).
-block_index(6, 6, 8).
+% solution to exampleBoard
+exampleBoardSolution([[6, 5, 8, 2, 4, 7, 9, 1, 3],
+                      [4, 3, 2, 1, 9, 5, 6, 8, 7],
+                      [9, 1, 7, 8, 6, 3, 2, 5, 4],
+                      [8, 6, 5, 3, 1, 2, 4, 7, 9],
+                      [3, 7, 4, 9, 5, 8, 1, 6, 2],
+                      [1, 2, 9, 6, 7, 4, 5, 3, 8],
+                      [2, 9, 6, 7, 8, 1, 3, 4, 5],
+                      [5, 8, 1, 4, 3, 9, 7, 2, 6],
+                      [7, 4, 3, 5, 2, 6, 8, 9, 1]]).
 
-blocks([], []).
-blocks([[],[],[]|Rows], BlocksTail) :-
-  blocks(Rows, BlocksTail).
-blocks([[A,B,C|Bs], [D,E,F|Es], [G,H,I|Fs]|Rows], [[A,B,C,D,E,F,G,H,I]|BlocksTail]) :-
-  blocks([Bs,Es,Fs|Rows], BlocksTail).
+% a board with no solutions
+unsolvableBoard([[5, 1, 6, 8, 4, 9, 7, 3, 2],
+                 [3, 0, 7, 6, 0, 5, 0, 0, 0],
+                 [8, 0, 9, 7, 0, 0, 0, 6, 5],
+                 [1, 3, 5, 0, 6, 0, 9, 0, 7],
+                 [4, 7, 2, 5, 9, 1, 0, 0, 6],
+                 [9, 6, 8, 3, 7, 0, 0, 5, 0],
+                 [2, 5, 3, 1, 8, 6, 0, 7, 4],
+                 [6, 8, 4, 2, 0, 7, 5, 0, 0],
+                 [7, 9, 1, 0, 5, 0, 6, 0, 8]]).
+  
+% a board with two possible solutions
+boardWithTwoSolutions([[2, 9, 5, 7, 4, 3, 8, 6, 1],
+                      [4, 3, 1, 8, 6, 5, 9, 0, 0],
+                      [8, 7, 6, 1, 9, 2, 5, 4, 3],
+                      [3, 8, 7, 4, 5, 9, 2, 1, 6],
+                      [6, 1, 2, 3, 8, 7, 4, 9, 5],
+                      [5, 4, 9, 2, 1, 6, 7, 3, 8],
+                      [7, 6, 3, 5, 2, 4, 1, 8, 9],
+                      [9, 2, 8, 6, 7, 1, 3, 5, 4],
+                      [1, 5, 4, 9, 3, 8, 6, 0, 0]]).
 
-solve(Board, UpdatedBoard) :-
-    replace_zeros_in_board(Board, UpdatedBoard),
-    flatten(UpdatedBoard, BoardList),
-    BoardList ins 1..9,
-    maplist(all_distinct, UpdatedBoard),
-    transpose(UpdatedBoard, TransposedBoard),
-    maplist(all_distinct, TransposedBoard),
-    blocks(UpdatedBoard, Blocks),
-    maplist(all_distinct, Blocks),
-    % Label the variables to find a solution
-    label(BoardList).
-
-solvable(Board) :-
-    % Find all possible solutions
-    findall(Board, solve(Board, _), Solutions),
-    length(Solutions, 1).
-
-replace_zeros_in_board(Board, Result) :-
-    once(maplist(replace_zeros_in_row, Board, Result)).
-
-replace_zeros_in_row([], []).
-replace_zeros_in_row([0|T], [_|T2]) :- replace_zeros_in_row(T, T2).
-replace_zeros_in_row([H|T], [H|T2]) :- H #\= 0, replace_zeros_in_row(T, T2).
-
+% starts an interactive Sudoku game with a generated board
 play :-
     writeln("Welcome to Haskell Sudoku!"),
     get_difficulty(Difficulty),
@@ -83,6 +96,10 @@ play :-
     generateBoard(Difficulty, Solution, Board),
     run_game((Board, Solution)).
 
+% starts an interactive Sudoku game with the given board
+% Examples:
+% exampleBoard(Board), play_with_board(Board).
+% exampleBoardAlmostFilled(Board), play_with_board(Board).
 play_with_board(Board) :-
   ( solvable(Board) ->
     solve(Board, Solution),
@@ -91,6 +108,7 @@ play_with_board(Board) :-
     writeln("Invalid starting board.")
   ).
 
+% runs a Sudoku game with a partially filled board and its solution
 run_game((Board, Solution)) :-
   ( Board == Solution ->
     print_board(Board),
@@ -119,6 +137,98 @@ run_game((Board, Solution)) :-
     )
   ).
 
+% produces true if UpdatedBoard is the solution to Board
+% Examples:
+% exampleBoard(Board), solve(Board, Solution).
+% exampleBoardAlmostFilled(Board), solve(Board, Solution).
+% unsolvableBoard(Board), solve(Board, Solution).
+% boardWithTwoSolutions(Board), solve(Board, Solution).
+solve(Board, UpdatedBoard) :-
+    replace_zeros_in_board(Board, UpdatedBoard),
+    flatten(UpdatedBoard, BoardList),
+    BoardList ins 1..9,
+    maplist(all_distinct, UpdatedBoard),
+    transpose(UpdatedBoard, TransposedBoard),
+    maplist(all_distinct, TransposedBoard),
+    blocks(UpdatedBoard, Blocks),
+    maplist(all_distinct, Blocks),
+    % Label the variables to find a solution
+    label(BoardList).
+
+% produces true if the given Board has exactly one solution
+solvable(Board) :-
+    % Find all possible solutions
+    findall(Board, solve(Board, _), Solutions),
+    length(Solutions, 1).
+
+% produces true if Num placed at position (Row, Col) on the board is a valid move
+is_valid_action(Board, Row, Col, Num) :-
+    between(0, 8, Row),
+    between(0, 8, Col),
+    between(1, 9, Num),
+    nth0(Row, Board, RowVals),
+    \+ member(Num, RowVals),
+    transpose(Board, Columns),
+    nth0(Col, Columns, ColVals),
+    \+ member(Num, ColVals),
+    RowBlock is Row // 3 * 3,
+    ColBlock is Col // 3 * 3,
+    block_index(RowBlock, ColBlock, BlockIndex),
+    blocks(Board, Blocks),
+    nth0(BlockIndex, Blocks, BlockVals),
+    \+ member(Num, BlockVals).
+
+% produces true if NewBoard is Board with Num placed at position (Row, Col)
+perform_action(Board, Row, Col, Num, NewBoard) :-
+    nth0(Row, Board, OldRow),
+    replace_element_in_list(OldRow, Col, Num, NewRow),
+    replace_element_in_list(Board, Row, NewRow, NewBoard).
+    
+% produces true if Result is List with Element placed at Index
+replace_element_in_list(List, Index, Element, Result) :-
+    nth0(Index, List, _, Temp),
+    nth0(Index, Result, Element, Temp).
+
+% applies a hint from the solution to produce NewBoard
+apply_hint(Board, Solution, (NewBoard, ((Row, Col), Num))) :-
+    once(find_empty_position(Board, (Row, Col))),
+    nth0(Row, Solution, SolutionBoardRow),
+    nth0(Col, SolutionBoardRow, Num),
+    once(perform_action(Board, Row, Col, Num, NewBoard)).
+
+% produces true if position (Row, Column) is empty in Board
+find_empty_position(Board, (Row, Column)) :-
+    nth0(Row, Board, RowList),   % Get the RowList at the Row index
+    nth0(Column, RowList, 0).    % Check if the Column index in RowList is 0
+
+% produces the index in the list produced by blocks of the 3x3 block
+block_index(0, 0, 0).
+block_index(0, 3, 1).
+block_index(0, 6, 2).
+block_index(3, 0, 3).
+block_index(3, 6, 4).
+block_index(3, 6, 5).
+block_index(6, 0, 6).
+block_index(6, 3, 7).
+block_index(6, 6, 8).
+
+% produces the board as a list of the 9 3x3 blocks
+blocks([], []).
+blocks([[],[],[]|Rows], BlocksTail) :-
+  blocks(Rows, BlocksTail).
+blocks([[A,B,C|Bs], [D,E,F|Es], [G,H,I|Fs]|Rows], [[A,B,C,D,E,F,G,H,I]|BlocksTail]) :-
+  blocks([Bs,Es,Fs|Rows], BlocksTail).
+
+% replaces zeros in a Sudoku board with free variables
+replace_zeros_in_board(Board, Result) :-
+    once(maplist(replace_zeros_in_row, Board, Result)).
+
+% replaces zeros in a list with free variables
+replace_zeros_in_row([], []).
+replace_zeros_in_row([0|T], [_|T2]) :- replace_zeros_in_row(T, T2).
+replace_zeros_in_row([H|T], [H|T2]) :- H #\= 0, replace_zeros_in_row(T, T2).
+
+% prints Msg and gets a numerical input
 get_num_input(Msg, Input) :-
     write(Msg),
     read_line_to_string(user_input, InputStr),
@@ -129,11 +239,13 @@ get_num_input(Msg, Input) :-
         get_num_input(Msg, Input)
     ).
 
+% gets a move for the Sudoku game
 get_action(((Row, Col), Num)) :-
     get_num_input("Enter the row where you would like to place a number (0-8): ", Row),
     get_num_input("Enter the column where you would like to place a number (0-8): ", Col),
     get_num_input("Enter the number you would like to place (1-9): ", Num).
 
+% gets a diffulty of easy, medium, or hard
 get_difficulty(Difficulty) :-
     write('Enter the difficulty you would like to play (\'easy\', \'medium\', or \'hard\'): '),
     read_line_to_string(user_input, Input),
@@ -145,11 +257,13 @@ get_difficulty(Difficulty) :-
         get_difficulty(Difficulty)
     ).
 
+% prints out the given board
 print_board([]).
 print_board([Row|Rows]) :-
     format('~w~n', [Row]),
     print_board(Rows).
 
+% prints out the given action
 print_action(((Row, Col), Num)) :-
     string_concat("Placed ", Num, S1),
     string_concat(S1, " at position (", S2),
@@ -158,39 +272,6 @@ print_action(((Row, Col), Num)) :-
     string_concat(S4, Col, S5),
     string_concat(S5, ")", String),
     writeln(String).
-
-%creates a base board with an easy mix
-baseBoardEasy([[1, 2, 3, 4, 5, 6, 7, 8, 9],
-               [4, 5, 6, 7, 8, 9, 1, 2, 3],
-               [7, 8, 9, 1, 2, 3, 4, 5, 6],
-               [2, 3, 4, 5, 6, 7, 8, 9, 1],
-               [5, 6, 7, 8, 9, 1, 2, 3, 4],
-               [8, 9, 1, 2, 3, 4, 5, 6, 7],
-               [3, 4, 5, 6, 7, 8, 9, 1, 2],
-               [6, 7, 8, 9, 1, 2, 3, 4, 5],
-               [9, 1, 2, 3, 4, 5, 6, 7, 8]]).
-
-%creates a base board with a medium mix
-baseBoardMed([[5, 3, 4, 6, 7, 8, 9, 1, 2],
-              [6, 7, 2, 1, 9, 5, 3, 4, 8],
-              [1, 9, 8, 3, 4, 2, 5, 6, 7],
-              [8, 5, 9, 7, 6, 1, 4, 2, 3],
-              [4, 2, 6, 8, 5, 3, 7, 9, 1],
-              [7, 1, 3, 9, 2, 4, 8, 5, 6],
-              [9, 6, 1, 5, 3, 7, 2, 8, 4],
-              [2, 8, 7, 4, 1, 9, 6, 3, 5],
-              [3, 4, 5, 2, 8, 6, 1, 7, 9]]).
-
-%creates a base board with a hard mix
-baseBoardHard([[9, 5, 4, 7, 1, 2, 6, 8, 3],
-               [1, 7, 3, 4, 8, 6, 9, 2, 5],
-               [2, 6, 8, 9, 5, 3, 4, 7, 1],
-               [3, 4, 1, 8, 7, 5, 2, 9, 6],
-               [8, 2, 7, 6, 9, 1, 3, 5, 4],
-               [5, 9, 6, 3, 2, 4, 8, 1, 7],
-               [6, 8, 5, 2, 3, 7, 1, 4, 9],
-               [4, 1, 9, 5, 6, 8, 7, 3, 2],
-               [7, 3, 2, 1, 4, 9, 5, 6, 8]]).
 
 %allButTwoMatching is true when L1 has the same values as L2 in every position except two of them
 allButTwoMatching(L1, L2) :- nth(X1, L1, N1), nth(X1, L2, N1), nth(X2, L1, N2), nth(X2, L2, N2), nth(X3, L1, N3), nth(X3, L2, N3),
